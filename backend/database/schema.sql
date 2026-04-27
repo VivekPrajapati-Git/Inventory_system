@@ -3,4 +3,11 @@ CREATE TABLE IF NOT EXISTS Stock(
     Name VARCHAR(50),
     Quantity INT,
     Price INT
-)
+);
+
+CREATE TABLE IF NOT EXISTS Login(
+    UniqueID INT PRIMARY KEY AUTO_INCREMENT,
+    UserName VARCHAR(50) UNIQUE NOT NULL,
+    SaltedPassword VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

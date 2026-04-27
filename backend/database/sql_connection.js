@@ -1,9 +1,9 @@
-const mysql = require('mysql')
+const mysql = require('mysql2')
 
 config = {
     host: process.env.SQL_HOST || 'localhost',
-    user: process.env.SQL_USER || 'root',
-    password: process.env.SQL_PASSWORD || 'root',
+    user: process.env.SQL_USER || 'appuser',
+    password: process.env.SQL_PASSWORD || 'mypassword',
     database: process.env.SQL_DATABASE || 'Stocks',
     waitForConnections: true,
     connectionLimit: 10,
@@ -13,7 +13,12 @@ config = {
 dbConnection = mysql.createConnection(config);
 
 dbConnection.connect((err)=>{
-    console.log("MySQL Server Connected !")
+    if (err){
+        console.log(err)
+    }
+    else {
+        console.log("MySQL Server Connected!")
+    }
 });
 
 module.exports = dbConnection;
