@@ -12,6 +12,7 @@ app.use(cors())
 
 app.use('/stock',authMiddleware,require('./routes/stocks'));
 app.use('/auth',require('./routes/auth'))
+app.use('/store',require('./routes/image_store'))
 
 app.listen(3000,()=>{
     console.log("Server started at 3000 port !")
