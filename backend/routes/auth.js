@@ -11,8 +11,9 @@ router.post('/sign_up',async(req,res)=>{
 
     salted_password = await bcrypt.hash(data.Password,10)
 
-    const query = "insert into Login(UserName,SaltedPassword) values(?,?)"
-    values = [data['UserName'],salted_password]
+    const role = data.Role || 'user';
+    const query = "insert into Login(UserName,SaltedPassword,Role) values(?,?,?)"
+    values = [data['UserName'],salted_password,role]
     db.query(query,values,(err,result)=>{
         if (err) {
             console.log(err);
@@ -43,16 +44,17 @@ router.post('/login',(req,res)=>{
             return res.status(401).send("Invalid Username or Password");
         }
 
-        const secret = crypto.randomBytes(32).toString('hex')
+        const secret = "your_secret_key";
         const token = jwt.sign(
-            {id : result[0].UniqueID,username: result[0].UserName},
+            {id : result[0].UniqueID,username: result[0].UserName, role: result[0].Role},
             secret,
             {expiresIn : "24h"}
         )
 
         res.json({
             "Message" : "Login Successful",
-            token : token
+            token : token,
+            role: result[0].Role
         })
     })
 })
