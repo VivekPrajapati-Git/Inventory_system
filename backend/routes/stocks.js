@@ -35,4 +35,32 @@ router.post('/insert_stock', (req, res) => {
     });
 });
 
+router.get('/get_stocks', (req, res) => {
+    db.query("SELECT * FROM Stock", (err, result) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("DB error");
+        }
+        // Map ID to id for frontend compatibility
+        const mapped = result.map(row => ({
+            id: row.ID,
+            name: row.Name,
+            quantity: row.Quantity,
+            price: row.Price
+        }));
+        res.json(mapped);
+    });
+});
+
+router.put('/update_stock', (req, res) => {
+    const { id, quantityToAdd } = req.body;
+    db.query("UPDATE Stock SET Quantity = Quantity + ? WHERE ID = ?", [quantityToAdd, id], (err, result) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("DB error");
+        }
+        res.send("Stock updated successfully");
+    });
+});
+
 module.exports = router;
