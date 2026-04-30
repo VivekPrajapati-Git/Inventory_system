@@ -2,61 +2,74 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
-const crypto = require('crypto')
 
-const db = require('../database/sql_connection')
+const db = require('../database/supabase_conn')
 
 router.post('/sign_up',async(req,res)=>{
-    const data = req.body
+    const {UserName,Password,Role} = req.body
 
-    salted_password = await bcrypt.hash(data.Password,10)
+    salted_password = await bcrypt.hash(Password,10)
 
-    const role = data.Role || 'user';
-    const query = "insert into Login(UserName,SaltedPassword,Role) values(?,?,?)"
-    values = [data['UserName'],salted_password,role]
-    db.query(query,values,(err,result)=>{
-        if (err) {
-            console.log(err);
-            res.send(err)
-        };
-        res.send("Successfully Signed Up")
-    })
+    const role = Role || 'user';
+
+    const {result,error} = await db.from("Login").insert(
+        [{username : UserName,saltedpassword : salted_password,role : role }]).select();
+
+    if (error){
+        res.send(error);
+    } else{
+        res.send("User Successfully Signed Up!")
+    }
 })
 
-router.post('/login',(req,res)=>{
-    const data = req.body
-    
-    const query = "Select * from Login where UserName = ?"
-    db.query(query,data.UserName,async(err,result)=>{
-        if (err){
-            return res.status(401).send("Server Error")
-        }
+router.post('/login', async (req, res) => {
+    try {
+        const { UserName, Password } = req.body;
 
-        if (result.length === 0){
-            return res.status(401).send("User Not Found")
-        }
+        // 1. Query Supabase for the user
+        const { data: user, error } = await db
+            .from("Login")
+            .select("*")
+            .eq("username", UserName)
+            .single(); // .single() returns one object instead of an array
 
-        password = result[0].SaltedPassword
-
-        match = await bcrypt.compare(data.Password,password)
-
-        if(!match){
+        // 2. Handle connection errors or missing users
+        if (error || !user) {
+            console.error("Login lookup error:", error);
             return res.status(401).send("Invalid Username or Password");
         }
 
+        // 3. Compare passwords (ensure column name matches your DB, e.g., 'Password')
+        const isMatch = await bcrypt.compare(Password, user.saltedpassword);
+
+        if (!isMatch) {
+            return res.status(401).send("Invalid Username or Password");
+        }
+
+        // 4. Generate JWT
         const secret = "your_secret_key";
         const token = jwt.sign(
-            {id : result[0].UniqueID,username: result[0].UserName, role: result[0].Role},
+            { 
+                id: user.uniqueid || user.UniqueID, 
+                username: user.username || user.UserName, 
+                role: user.role || user.Role 
+            },
             secret,
-            {expiresIn : "24h"}
-        )
+            { expiresIn: "24h" }
+        );
 
+        // 5. Send success response
         res.json({
-            "Message" : "Login Successful",
-            token : token,
-            role: result[0].Role
-        })
-    })
-})
+            "Message": "Login Successful",
+            token: token,
+            role: user.role || user.Role
+        });
+
+    } catch (err) {
+        console.error("Server exception:", err);
+        res.status(500).send("Internal Server Error");
+    }
+});
+
 
 module.exports = router

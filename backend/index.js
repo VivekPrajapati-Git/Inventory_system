@@ -1,7 +1,7 @@
 const express = require('express')
 const app = express();
 
-const db = require('./database/sql_connection')
+const db = require('./database/supabase_conn')
 const cors = require('cors')
 const mongo_conn = require('./models/mongo_conn')
 

@@ -42,7 +42,7 @@ router.post('/log_sales', async (req, res) => {
 router.get('/get_sales', async (req, res) => {
     try {
         const sales = await UserSales.find({}).sort({ date: -1 });
-        
+
         // We need to flatten this for the frontend to display individual sales easily, 
         // or just return as is and frontend handles it. 
         // The previous frontend expected an array of flat objects {id, username, item, quantity, price, imageUrl, date}

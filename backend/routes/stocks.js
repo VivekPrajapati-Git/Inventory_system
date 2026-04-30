@@ -1,66 +1,101 @@
-const express = require('express')
-const router = express.Router();
-const db = require('../database/sql_connection')
+    const express = require('express')
+    const router = express.Router();
+    const supabase = require('../database/supabase_conn')
 
-router.post('/insert_stock', (req, res) => {
-    const data = req.body;
+    router.post('/insert_stock', async (req, res) => {
+        const data = req.body;
 
-    db.query("SELECT ID FROM Stock ORDER BY ID DESC LIMIT 1;", (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).send("DB error");
-        }
+        try {
+            const { data: lastRecord, error: fetchErr } = await supabase
+                .from('Stock')
+                .select('id')
+                .order('id', { ascending: false })
+                .limit(1);
 
-        let last_id = result.length > 0 ? result[0].ID : 0;
+            if (fetchErr) {
+                console.error(fetchErr);
+                return res.status(500).send("DB error");
+            }
 
-        let values = data.map((item, index) => {
-            return [
-                last_id + index + 1,
-                item.name,
-                item.quantity,
-                item.price
-            ];
-        });
+            let last_id = (lastRecord && lastRecord.length > 0) ? lastRecord[0].id : 0;
 
-        const query = "INSERT INTO Stock (ID, Name, Quantity, Price) VALUES ?";
+            let values = data.map((item, index) => {
+                return {
+                    id: last_id + index + 1,
+                    name: item.name,
+                    quantity: item.quantity,
+                    price: item.price
+                };
+            });
 
-        db.query(query, [values], (err, result) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).send(err["sqlMessage"]);
+            const { error: insertErr } = await supabase
+                .from('Stock')
+                .insert(values);
+
+            if (insertErr) {
+                console.error(insertErr);
+                return res.status(500).send(insertErr.message);
             }
 
             res.send("Inserted successfully");
-        });
-    });
-});
-
-router.get('/get_stocks', (req, res) => {
-    db.query("SELECT * FROM Stock", (err, result) => {
-        if (err) {
+        } catch (err) {
             console.error(err);
-            return res.status(500).send("DB error");
+            res.status(500).send("Server error");
         }
-        // Map ID to id for frontend compatibility
-        const mapped = result.map(row => ({
-            id: row.ID,
-            name: row.Name,
-            quantity: row.Quantity,
-            price: row.Price
-        }));
-        res.json(mapped);
     });
-});
 
-router.put('/update_stock', (req, res) => {
-    const { id, quantityToAdd } = req.body;
-    db.query("UPDATE Stock SET Quantity = Quantity + ? WHERE ID = ?", [quantityToAdd, id], (err, result) => {
-        if (err) {
+    router.get('/get_stocks', async (req, res) => {
+        try {
+            const { data, error } = await supabase.from('Stock').select('*');
+            if (error) {
+                console.error(error);
+                return res.status(500).send("DB error");
+            }
+            
+            // Map ID to id for frontend compatibility
+            const mapped = data.map(row => ({
+                id: row.id,
+                name: row.name,
+                quantity: row.quantity,
+                price: row.price
+            }));
+            res.json(mapped);
+        } catch (err) {
             console.error(err);
-            return res.status(500).send("DB error");
+            res.status(500).send("Server error");
         }
-        res.send("Stock updated successfully");
     });
-});
 
-module.exports = router;
+    router.put('/update_stock', async (req, res) => {
+        const { id, quantityToAdd } = req.body;
+        try {
+            const { data: stock, error: fetchErr } = await supabase
+                .from('Stock')
+                .select('quantity')
+                .eq('id', id)
+                .single();
+                
+            if (fetchErr) {
+                console.error(fetchErr);
+                return res.status(500).send("DB error");
+            }
+            
+            const newQuantity = stock.quantity + quantityToAdd;
+            
+            const { error: updateErr } = await supabase
+                .from('Stock')
+                .update({ quantity: newQuantity })
+                .eq('id', id);
+                
+            if (updateErr) {
+                console.error(updateErr);
+                return res.status(500).send("DB error");
+            }
+            res.send("Stock updated successfully");
+        } catch (err) {
+            console.error(err);
+            res.status(500).send("Server error");
+        }
+    });
+
+    module.exports = router;
