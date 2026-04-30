@@ -1,16 +1,10 @@
-const { MongoClient } = require('mongodb');
-require('dotenv').config()
+const mongoose = require('mongoose');
+require('dotenv').config();
 
-const client = new MongoClient(process.env.MONGO_URI);
+const MONGO_URI = process.env.MONGO_URI;
 
-async function run() {
-  try {
-    await client.connect();
-    console.log("Connected successfully to Atlas");
-  } finally {
-    await client.close();
-  }
-}
-run().catch(console.dir);
+mongoose.connect(MONGO_URI)
+  .then(() => console.log("Connected successfully to Atlas"))
+  .catch(err => console.error("MongoDB connection error:", err));
 
-module.exports = client;
+module.exports = mongoose.connection;

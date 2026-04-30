@@ -12,4 +12,6 @@ const UserSalesSchema = new mongoose.Schema({
     quantities: [Number]
 });
 
-module.exports = mongoose.model('UserSales', UserSalesSchema);
+const UserSales = mongoose.model('UserSales', UserSalesSchema);
+
+module.exports = UserSales;
