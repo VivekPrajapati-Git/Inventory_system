@@ -25,7 +25,7 @@ router.post('/sign_up',async(req,res)=>{
 
 router.post('/login',(req,res)=>{
     const data = req.body
-    console.log(data)
+    
     const query = "Select * from Login where UserName = ?"
     db.query(query,data.UserName,async(err,result)=>{
         if (err){
