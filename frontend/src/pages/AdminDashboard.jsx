@@ -169,7 +169,7 @@ const AdminDashboard = () => {
                           {stock.quantity}
                         </span>
                       </td>
-                      <td>${stock.price}</td>
+                      <td>{stock.price} /-</td>
                     </tr>
                   ))}
                 </tbody>

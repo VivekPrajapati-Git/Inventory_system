@@ -12,6 +12,10 @@ const UserDashboard = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState('');
   
+  const selectedStockItem = stocks.find(s => s.name === selectedStock);
+  const availableQty = selectedStockItem ? selectedStockItem.quantity : 0;
+  const isQuantityInvalid = quantity > availableQty || quantity <= 0;
+  
   const webcamRef = useRef(null);
   const navigate = useNavigate();
   const username = localStorage.getItem('username');
@@ -44,6 +48,11 @@ const UserDashboard = () => {
     e.preventDefault();
     if (!imageSrc || !selectedStock || !quantity) {
       setMessage('Please fill all fields and capture an image.');
+      return;
+    }
+
+    if (Number(quantity) > availableQty) {
+      setMessage(`Cannot sell more than available quantity (${availableQty})`);
       return;
     }
 
@@ -149,22 +158,32 @@ const UserDashboard = () => {
             </div>
             
             <div className="form-group">
-              <label>Quantity Sold</label>
+              <label>Quantity Sold {selectedStock && <small style={{ color: 'var(--text-muted)' }}>(Available: {availableQty})</small>}</label>
               <input 
                 type="number" 
                 min="1" 
+                max={availableQty}
                 value={quantity} 
                 onChange={(e) => setQuantity(e.target.value)} 
                 required 
                 placeholder="Enter quantity"
+                style={{ 
+                  borderColor: (quantity > availableQty) ? 'var(--danger-color)' : '',
+                  boxShadow: (quantity > availableQty) ? '0 0 0 3px rgba(239, 68, 68, 0.2)' : ''
+                }}
               />
+              {quantity > availableQty && (
+                <span style={{ color: 'var(--danger-color)', fontSize: '0.8rem', marginTop: '4px' }}>
+                  Quantity exceeds available stock!
+                </span>
+              )}
             </div>
             
             <button 
               type="submit" 
               className="btn btn-primary" 
               style={{ width: '100%', marginTop: '16px' }}
-              disabled={isUploading}
+              disabled={isUploading || isQuantityInvalid}
             >
               {isUploading ? 'Uploading & Logging...' : 'Submit Sale'}
             </button>
