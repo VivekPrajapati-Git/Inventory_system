@@ -8,12 +8,13 @@ const Signup = () => {
   const [role, setRole] = useState('user');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [phone_number, setPhoneNumber] = useState('');
   const navigate = useNavigate();
 
   const handleSignup = async (e) => {
     e.preventDefault();
     try {
-      await signup(username, password, role);
+      await signup(username, password, role, phone_number);
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
@@ -46,6 +47,16 @@ const Signup = () => {
               onChange={(e) => setPassword(e.target.value)} 
               required 
               placeholder="Choose a password"
+            />
+          </div>
+          <div className="form-group">
+            <label>Phone Number</label>
+            <input 
+              type="text" 
+              value={phone_number} 
+              onChange={(e) => setPhoneNumber(e.target.value)} 
+              required 
+              placeholder="Enter your phone number"
             />
           </div>
           <div className="form-group">

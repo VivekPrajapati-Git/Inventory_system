@@ -25,8 +25,8 @@ export const login = async (username, password) => {
   return response.data;
 };
 
-export const signup = async (username, password, role) => {
-  const response = await api.post('/auth/sign_up', { UserName: username, Password: password, Role: role });
+export const signup = async (username, password, role,phone_number) => {
+  const response = await api.post('/auth/sign_up', { UserName: username, Password: password, Role: role, Phone_Number: phone_number });
   return response.data;
 };
 
