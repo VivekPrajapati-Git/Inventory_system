@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { signup } from '../api/api';
 
 const Signup = () => {
+  const [fullname,setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
@@ -14,7 +15,7 @@ const Signup = () => {
   const handleSignup = async (e) => {
     e.preventDefault();
     try {
-      await signup(username, password, role, phone_number);
+      await signup(fullname,username, password, role, phone_number);
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
@@ -29,6 +30,16 @@ const Signup = () => {
         {error && <div className="badge badge-danger" style={{ marginBottom: '16px', display: 'block', textAlign: 'center', background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', border: '1px solid #ef4444' }}>{error}</div>}
         {success && <div className="badge badge-success" style={{ marginBottom: '16px', display: 'block', textAlign: 'center' }}>Account created! Redirecting to login...</div>}
         <form onSubmit={handleSignup}>
+          <div className="form-group">
+            <label>Full Name</label>
+            <input 
+              type="text" 
+              value={fullname} 
+              onChange={(e) => setFullName(e.target.value)} 
+              required 
+              placeholder="Enter your full name"
+            />
+          </div>
           <div className="form-group">
             <label>Username</label>
             <input 

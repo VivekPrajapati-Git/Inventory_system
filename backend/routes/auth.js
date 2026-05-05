@@ -7,13 +7,14 @@ const db = require('../database/supabase_conn')
 
 router.post('/sign_up', async (req, res) => {
     try {
-        const { UserName, Password, Role, Phone_Number } = req.body
+        const {FullName, UserName, Password, Role, Phone_Number } = req.body
         
         const salted_password = await bcrypt.hash(Password, 10)
         const role = Role || 'user';
 
         const { data, error } = await db.from("Login").insert([
             { 
+                fullname : FullName,
                 username: UserName, 
                 saltedpassword: salted_password, 
                 role: role, 
