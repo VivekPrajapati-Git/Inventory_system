@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, PackageSearch, History, Plus, List, Edit, UserPlus, Search, ChevronLeft, User as UserIcon } from 'lucide-react';
+import { LogOut, PackageSearch, History, Plus, List, Edit, UserPlus, Search, ChevronLeft, User as UserIcon, X } from 'lucide-react';
 import { getStocks, addStock, updateStock, getSales, logout, signup } from '../api/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,6 +24,7 @@ const AdminDashboard = () => {
   // Sales Log Navigation State
   const [selectedLogDate, setSelectedLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedLogUser, setSelectedLogUser] = useState(null);
+  const [fullSizeImage, setFullSizeImage] = useState(null);
   
   const navigate = useNavigate();
 
@@ -339,7 +340,12 @@ const AdminDashboard = () => {
                   <div className="grid-3">
                     {userSales.map(sale => (
                       <div key={sale.id} className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <img src={sale.imageUrl} alt="Sale Item" style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '8px' }} />
+                        <img 
+                          src={sale.imageUrl} 
+                          alt="Sale Item" 
+                          style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer' }} 
+                          onClick={() => setFullSizeImage(sale.imageUrl)}
+                        />
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h4 style={{ margin: 0 }}>{sale.item}</h4>
@@ -384,6 +390,39 @@ const AdminDashboard = () => {
             </div>
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '16px' }}>Create User</button>
           </form>
+        </div>
+      )}
+
+      {fullSizeImage && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            background: 'rgba(0,0,0,0.85)', 
+            zIndex: 1000, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backdropFilter: 'blur(10px)',
+            animation: 'fade-in 0.3s ease'
+          }}
+          onClick={() => setFullSizeImage(null)}
+        >
+          <button 
+            style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', zIndex: 1001 }}
+            onClick={(e) => { e.stopPropagation(); setFullSizeImage(null); }}
+          >
+            <X size={40} />
+          </button>
+          <img 
+            src={fullSizeImage} 
+            alt="Full Size" 
+            style={{ maxWidth: '90%', maxHeight: '90%', borderRadius: '12px', boxShadow: '0 0 50px rgba(0,0,0,0.5)', objectFit: 'contain' }} 
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
