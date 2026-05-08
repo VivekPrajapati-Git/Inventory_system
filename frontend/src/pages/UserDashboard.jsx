@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
-import { Camera, Upload, LogOut } from 'lucide-react';
-import { getStocks, uploadImage, logSale, logout } from '../api/api';
+import { Camera, Upload, LogOut, History, ChevronLeft, X } from 'lucide-react';
+import { getStocks, uploadImage, logSale, logout, getSales } from '../api/api';
 import { useNavigate } from 'react-router-dom';
 
 const UserDashboard = () => {
@@ -11,6 +11,10 @@ const UserDashboard = () => {
   const [imageSrc, setImageSrc] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState('');
+  const [activeTab, setActiveTab] = useState('new-sale');
+  const [sales, setSales] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [fullSizeImage, setFullSizeImage] = useState(null);
   
   const selectedStockItem = stocks.find(s => s.name === selectedStock);
   const availableQty = selectedStockItem ? selectedStockItem.quantity : 0;
@@ -22,7 +26,17 @@ const UserDashboard = () => {
 
   useEffect(() => {
     fetchStocks();
+    fetchSales();
   }, []);
+  
+  const fetchSales = async () => {
+    try {
+      const data = await getSales();
+      setSales(data);
+    } catch (error) {
+      console.error("Failed to fetch sales:", error);
+    }
+  };
 
   const fetchStocks = async () => {
     const data = await getStocks();
@@ -82,6 +96,7 @@ const UserDashboard = () => {
       setSelectedStock('');
       setQuantity('');
       fetchStocks(); // Refresh stock count
+      fetchSales(); // Refresh sales history
     } catch (err) {
       setMessage('Failed to log sale. Error: ' + (err.response?.data || err.message));
     } finally {
@@ -106,7 +121,25 @@ const UserDashboard = () => {
         </div>
       </div>
 
-      <div className="grid-2">
+      <div className="tabs" style={{ marginBottom: '24px', gap: '8px' }}>
+        <button 
+          className={`tab ${activeTab === 'new-sale' ? 'active' : ''}`}
+          onClick={() => setActiveTab('new-sale')}
+        >
+          <Camera size={16} style={{ display: 'inline', marginRight: '8px', verticalAlign: 'middle' }}/>
+          New Sale
+        </button>
+        <button 
+          className={`tab ${activeTab === 'history' ? 'active' : ''}`}
+          onClick={() => setActiveTab('history')}
+        >
+          <History size={16} style={{ display: 'inline', marginRight: '8px', verticalAlign: 'middle' }}/>
+          My Sales History
+        </button>
+      </div>
+
+      {activeTab === 'new-sale' && (
+        <div className="grid-2">
         <div className="glass-panel">
           <h3><Camera size={20} style={{ verticalAlign: 'middle', marginRight: '8px' }}/> Capture Item Photo</h3>
           {imageSrc ? (
@@ -189,7 +222,97 @@ const UserDashboard = () => {
             </button>
           </form>
         </div>
-      </div>
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="glass-panel">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+            <h3 style={{ margin: 0 }}>My Sales History</h3>
+            <div className="form-group" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ margin: 0, whiteSpace: 'nowrap' }}>Select Date:</label>
+              <input 
+                type="date" 
+                value={selectedDate} 
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
+              />
+            </div>
+          </div>
+
+          {(() => {
+            const userDateSales = sales.filter(sale => sale.username === username && sale.date === selectedDate);
+            const totalAmount = userDateSales.reduce((sum, sale) => sum + (sale.price * sale.quantity), 0);
+
+            if (userDateSales.length === 0) {
+              return <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No sales recorded for this date.</p>;
+            }
+
+            return (
+              <div>
+                <div style={{ marginBottom: '20px', padding: '16px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '12px', border: '1px solid rgba(34, 197, 94, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Total sales for today:</span>
+                  <strong style={{ fontSize: '1.4rem', color: '#4ade80' }}>{totalAmount.toFixed(2)} Rs.</strong>
+                </div>
+                <div className="grid-3">
+                  {userDateSales.map(sale => (
+                    <div key={sale.id} className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <img 
+                        src={sale.imageUrl} 
+                        alt="Sale Item" 
+                        style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer' }} 
+                        onClick={() => setFullSizeImage(sale.imageUrl)}
+                      />
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <h4 style={{ margin: 0 }}>{sale.item}</h4>
+                          <span className="badge badge-success">{(sale.price * sale.quantity).toFixed(2)} Rs.</span>
+                        </div>
+                        <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                          Price: {sale.price} Rs. | Qty: {sale.quantity}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {fullSizeImage && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            background: 'rgba(0,0,0,0.85)', 
+            zIndex: 1000, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backdropFilter: 'blur(10px)',
+            animation: 'fade-in 0.3s ease'
+          }}
+          onClick={() => setFullSizeImage(null)}
+        >
+          <button 
+            style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', zIndex: 1001 }}
+            onClick={(e) => { e.stopPropagation(); setFullSizeImage(null); }}
+          >
+            <X size={40} />
+          </button>
+          <img 
+            src={fullSizeImage} 
+            alt="Full Size" 
+            style={{ maxWidth: '90%', maxHeight: '90%', borderRadius: '12px', boxShadow: '0 0 50px rgba(0,0,0,0.5)', objectFit: 'contain' }} 
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };
