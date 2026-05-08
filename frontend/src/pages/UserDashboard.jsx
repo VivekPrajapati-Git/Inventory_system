@@ -15,6 +15,7 @@ const UserDashboard = () => {
   const [sales, setSales] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [fullSizeImage, setFullSizeImage] = useState(null);
+  const [amount,setamount] = useState(0) 
   
   const selectedStockItem = stocks.find(s => s.name === selectedStock);
   const availableQty = selectedStockItem ? selectedStockItem.quantity : 0;
@@ -28,6 +29,14 @@ const UserDashboard = () => {
     fetchStocks();
     fetchSales();
   }, []);
+
+  useEffect(() => {
+    if (selectedStockItem && quantity) {
+      setamount(selectedStockItem.price * Number(quantity));
+    } else {
+      setamount(0);
+    }
+  }, [selectedStock, quantity, stocks]);
   
   const fetchSales = async () => {
     try {
@@ -183,8 +192,8 @@ const UserDashboard = () => {
               <select value={selectedStock} onChange={(e) => setSelectedStock(e.target.value)} required>
                 <option value="">-- Choose Item --</option>
                 {stocks.map(stock => (
-                  <option key={stock.id} value={stock.name}>
-                    {stock.name} (Avail: {stock.quantity}) - ${stock.price}
+                  <option key={stock.id} value={stock.name} style={{ color: 'black' }}>
+                    {stock.name} (Avail: {stock.quantity}) - {stock.price} Rs.
                   </option>
                 ))}
               </select>
@@ -205,6 +214,10 @@ const UserDashboard = () => {
                   boxShadow: (quantity > availableQty) ? '0 0 0 3px rgba(239, 68, 68, 0.2)' : ''
                 }}
               />
+              <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.9rem' }}>Estimated Total:</span>
+                <strong style={{ fontSize: '1.2rem', color: '#4ade80' }}>{amount.toFixed(2)} Rs.</strong>
+              </div>
               {quantity > availableQty && (
                 <span style={{ color: 'var(--danger-color)', fontSize: '0.8rem', marginTop: '4px' }}>
                   Quantity exceeds available stock!
