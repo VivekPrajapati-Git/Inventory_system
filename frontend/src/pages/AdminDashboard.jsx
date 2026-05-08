@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, PackageSearch, History, Plus, List, Edit, UserPlus, Search } from 'lucide-react';
+import { LogOut, PackageSearch, History, Plus, List, Edit, UserPlus, Search, ChevronLeft, User as UserIcon } from 'lucide-react';
 import { getStocks, addStock, updateStock, getSales, logout, signup } from '../api/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,6 +20,10 @@ const AdminDashboard = () => {
   const [newUsername, setNewUsername] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState('user');
+  
+  // Sales Log Navigation State
+  const [selectedLogDate, setSelectedLogDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedLogUser, setSelectedLogUser] = useState(null);
   
   const navigate = useNavigate();
 
@@ -169,7 +173,7 @@ const AdminDashboard = () => {
                           {stock.quantity}
                         </span>
                       </td>
-                      <td>{stock.price} /-</td>
+                      <td>{stock.price} Rs.</td>
                     </tr>
                   ))}
                 </tbody>
@@ -253,30 +257,105 @@ const AdminDashboard = () => {
 
       {activeTab === 'sales' && (
         <div className="glass-panel">
-          <h3>Recent Sales Activity</h3>
-          {sales.length === 0 ? (
-            <p>No sales have been logged yet.</p>
-          ) : (
-            <div className="grid-3">
-              {sales.map(sale => (
-                <div key={sale.id} className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <img src={sale.imageUrl} alt="Sale Item" style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px' }} />
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h4 style={{ margin: 0 }}>{sale.item}</h4>
-                      <span className="badge badge-success">${sale.price * sale.quantity}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {selectedLogUser && (
+                <button 
+                  onClick={() => setSelectedLogUser(null)}
+                  className="btn btn-outline" 
+                  style={{ padding: '6px', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <ChevronLeft size={20} />
+                </button>
+              )}
+              <h3 style={{ margin: 0 }}>
+                {selectedLogUser ? `Sales by ${selectedLogUser}` : 'Sales Log'}
+              </h3>
+            </div>
+            
+            {!selectedLogUser && (
+              <div className="form-group" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label style={{ margin: 0, whiteSpace: 'nowrap' }}>Select Date:</label>
+                <input 
+                  type="date" 
+                  value={selectedLogDate} 
+                  onChange={(e) => setSelectedLogDate(e.target.value)}
+                  style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
+                />
+              </div>
+            )}
+          </div>
+
+          {(() => {
+            const dateFilteredSales = sales.filter(sale => sale.date === selectedLogDate);
+            
+            if (dateFilteredSales.length === 0) {
+              return <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No sales recorded for this date.</p>;
+            }
+
+            if (!selectedLogUser) {
+              // Group by user
+              const userGroups = dateFilteredSales.reduce((acc, sale) => {
+                if (!acc[sale.username]) {
+                  acc[sale.username] = { count: 0, total: 0 };
+                }
+                acc[sale.username].count += 1;
+                acc[sale.username].total += sale.price * sale.quantity;
+                return acc;
+              }, {});
+
+              return (
+                <div className="grid-3">
+                  {Object.entries(userGroups).map(([username, data]) => (
+                    <div 
+                      key={username} 
+                      className="glass-panel hover-effect" 
+                      style={{ padding: '20px', cursor: 'pointer', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}
+                      onClick={() => setSelectedLogUser(username)}
+                    >
+                      <div style={{ background: 'rgba(255,255,255,0.1)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                        <UserIcon size={30} color="var(--primary-color)" />
+                      </div>
+                      <h4 style={{ margin: '0 0 4px 0' }}>{username}</h4>
+                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>{data.count} items sold</p>
+                      <div className="badge badge-success" style={{ marginTop: '12px', fontSize: '1rem' }}>
+                        Total: {data.total.toFixed(2)} Rs.
+                      </div>
                     </div>
-                    <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem' }}>
-                      Sold by: <strong style={{ color: 'var(--primary-color)'}}>{sale.username}</strong>
-                    </p>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Quantity: {sale.quantity} | {new Date(sale.date).toLocaleString()}
-                    </p>
+                  ))}
+                </div>
+              );
+            } else {
+              // Show user items
+              const userSales = dateFilteredSales.filter(sale => sale.username === selectedLogUser);
+              const userTotal = userSales.reduce((sum, sale) => sum + (sale.price * sale.quantity), 0);
+
+              return (
+                <div>
+                  <div style={{ marginBottom: '20px', padding: '16px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '12px', border: '1px solid rgba(34, 197, 94, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Total sales amount for today:</span>
+                    <strong style={{ fontSize: '1.4rem', color: '#4ade80' }}>{userTotal.toFixed(2)} Rs.</strong>
+                  </div>
+                  <div className="grid-3">
+                    {userSales.map(sale => (
+                      <div key={sale.id} className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <img src={sale.imageUrl} alt="Sale Item" style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '8px' }} />
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h4 style={{ margin: 0 }}>{sale.item}</h4>
+                            <span className="badge badge-success">{(sale.price * sale.quantity).toFixed(2)} Rs.</span>
+                          </div>
+                          <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                            Price: ${sale.price} | Qty: {sale.quantity}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            }
+          })()}
         </div>
       )}
 
