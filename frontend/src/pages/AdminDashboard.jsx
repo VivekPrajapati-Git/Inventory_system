@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { LogOut, PackageSearch, History, Plus, List, Edit, UserPlus, Search, ChevronLeft, User as UserIcon, X } from 'lucide-react';
-import { getStocks, addStock, updateStock, getSales, logout, signup } from '../api/api';
+import { LogOut, PackageSearch, History, Plus, List, Edit, UserPlus, Search, ChevronLeft, User as UserIcon, X, Users } from 'lucide-react';
+import { getStocks, addStock, updateStock, getSales, logout, signup, getUsers } from '../api/api';
 import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
@@ -16,10 +16,8 @@ const AdminDashboard = () => {
   // Update Stock State
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Add User Form State
-  const [newUsername, setNewUsername] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState('user');
+  // Users List State
+  const [users, setUsers] = useState([]);
   
   // Sales Log Navigation State
   const [selectedLogDate, setSelectedLogDate] = useState(new Date().toISOString().split('T')[0]);
@@ -36,7 +34,9 @@ const AdminDashboard = () => {
     try {
       const stockData = await getStocks();
       const salesData = await getSales();
+      const userData = await getUsers();
       setStocks(stockData);
+      setUsers(userData);
       // Sort sales newest first
       setSales(salesData.sort((a, b) => new Date(b.date) - new Date(a.date)));
     } catch (error) {
@@ -74,21 +74,6 @@ const AdminDashboard = () => {
       } catch (error) {
         alert('Failed to update stock quantity.');
       }
-    }
-  };
-
-  const handleAddUser = async (e) => {
-    e.preventDefault();
-    if (!newUsername || !newUserPassword) return;
-    
-    try {
-      await signup(newUsername, newUserPassword, newUserRole);
-      alert('User created successfully!');
-      setNewUsername('');
-      setNewUserPassword('');
-      setNewUserRole('user');
-    } catch (err) {
-      alert('Failed to create user. It might already exist.');
     }
   };
 
@@ -142,11 +127,11 @@ const AdminDashboard = () => {
           Sales Log
         </button>
         <button 
-          className={`tab ${activeTab === 'add-user' ? 'active' : ''}`}
-          onClick={() => setActiveTab('add-user')}
+          className={`tab ${activeTab === 'users' ? 'active' : ''}`}
+          onClick={() => setActiveTab('users')}
         >
-          <UserPlus size={16} style={{ display: 'inline', marginRight: '8px', verticalAlign: 'middle' }}/>
-          Add User
+          <Users size={16} style={{ display: 'inline', marginRight: '8px', verticalAlign: 'middle' }}/>
+          All Users
         </button>
       </div>
 
@@ -365,31 +350,39 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {activeTab === 'add-user' && (
-        <div className="glass-panel" style={{ maxWidth: '400px', margin: '0 auto' }}>
-          <h3><UserPlus size={20} style={{ verticalAlign: 'middle', marginRight: '8px' }}/> Register New User</h3>
-          <form onSubmit={handleAddUser}>
-            <div className="form-group">
-              <label>Username</label>
-              <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} required />
+      {activeTab === 'users' && (
+        <div className="glass-panel">
+          <h3>Registered Users</h3>
+          {users.length === 0 ? (
+            <p>No users found.</p>
+          ) : (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Full Name</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Phone</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user, idx) => (
+                    <tr key={idx}>
+                      <td style={{ fontWeight: 500 }}>{user.fullname}</td>
+                      <td>{user.username}</td>
+                      <td>
+                        <span className={`badge ${user.role === 'admin' ? 'badge-primary' : 'badge-outline'}`} style={{ background: user.role === 'admin' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)', color: user.role === 'admin' ? '#3b82f6' : 'white' }}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td>{user.phone_number}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="form-group">
-              <label>Password</label>
-              <input type="password" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} required />
-            </div>
-            <div className="form-group">
-              <label>Role</label>
-              <select 
-                value={newUserRole} 
-                onChange={e => setNewUserRole(e.target.value)} 
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
-              >
-                <option value="user" style={{ color: 'black' }}>Standard User</option>
-                <option value="admin" style={{ color: 'black' }}>Administrator</option>
-              </select>
-            </div>
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '16px' }}>Create User</button>
-          </form>
+          )}
         </div>
       )}
 

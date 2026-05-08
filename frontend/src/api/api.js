@@ -66,6 +66,11 @@ export const getSales = async () => {
   return response.data;
 };
 
+export const getUsers = async () => {
+  const response = await api.get('/auth/users');
+  return response.data;
+};
+
 export const logout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('username');

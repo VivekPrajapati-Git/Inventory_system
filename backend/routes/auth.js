@@ -96,5 +96,18 @@ router.post('/login', async (req, res) => {
     }
 });
 
+router.get('/users', async (req, res) => {
+    try {
+        const { data, error } = await db.from("Login").select("fullname, username, role, phone_number");
+        if (error) {
+            console.error("Fetch users database error:", error);
+            return res.status(500).send("Failed to fetch users");
+        }
+        res.json(data);
+    } catch (err) {
+        console.error("Fetch users server exception:", err);
+        res.status(500).send("Internal Server Error");
+    }
+});
 
 module.exports = router
