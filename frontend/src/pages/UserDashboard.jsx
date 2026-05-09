@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
-import { Camera, Upload, LogOut, History, ChevronLeft, X } from 'lucide-react';
-import { getStocks, uploadImage, logSale, logout, getSales } from '../api/api';
+import { Camera, Upload, LogOut, History, ChevronLeft, X, ShoppingCart, Trash2, CheckCircle } from 'lucide-react';
+import { getStocks, uploadImage, logSale, logSalesBulk, logout, getSales } from '../api/api';
+
 import { useNavigate } from 'react-router-dom';
 
 const UserDashboard = () => {
@@ -16,6 +17,7 @@ const UserDashboard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [fullSizeImage, setFullSizeImage] = useState(null);
   const [amount,setamount] = useState(0) 
+  const [salesQueue, setSalesQueue] = useState([]);
   
   const selectedStockItem = stocks.find(s => s.name === selectedStock);
   const availableQty = selectedStockItem ? selectedStockItem.quantity : 0;
@@ -37,6 +39,27 @@ const UserDashboard = () => {
       setamount(0);
     }
   }, [selectedStock, quantity, stocks]);
+
+  // Handle keyboard shortcut for Enter
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        // If focusing on quantity input, add to queue
+        if (document.activeElement.tagName === 'INPUT' && document.activeElement.type === 'number') {
+          // No need to do anything here as the form onSubmit will handle it
+          return;
+        }
+        
+        // If queue is not empty and no inputs focused, maybe submit queue?
+        // But let's keep it simple: if Shift+Enter, submit queue
+        if (e.shiftKey && salesQueue.length > 0) {
+          handleSubmitQueue();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [salesQueue]);
   
   const fetchSales = async () => {
     try {
@@ -67,8 +90,8 @@ const UserDashboard = () => {
     return new File([u8arr], filename, {type:mime});
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleAddToQueue = async (e) => {
+    if (e) e.preventDefault();
     if (!imageSrc || !selectedStock || !quantity) {
       setMessage('Please fill all fields and capture an image.');
       return;
@@ -79,39 +102,69 @@ const UserDashboard = () => {
       return;
     }
 
+    const stockItem = stocks.find(s => s.name === selectedStock);
+    
+    // Add to local queue
+    const newItem = {
+      id: Date.now(),
+      item: selectedStock,
+      quantity: Number(quantity),
+      price: stockItem ? stockItem.price : 0,
+      imageSrc: imageSrc, // Store base64 for preview
+      total: amount
+    };
+
+    setSalesQueue([...salesQueue, newItem]);
+    
+    // Reset form for next item
+    setImageSrc(null);
+    setSelectedStock('');
+    setQuantity('');
+    setMessage('');
+  };
+
+  const removeFromQueue = (id) => {
+    setSalesQueue(salesQueue.filter(item => item.id !== id));
+  };
+
+  const handleSubmitQueue = async () => {
+    if (salesQueue.length === 0) return;
+
     setIsUploading(true);
     setMessage('');
 
     try {
-      const file = dataURLtoFile(imageSrc, 'sale_image.jpg');
+      const processedSales = [];
       
-      // Upload to real backend
-      const uploadRes = await uploadImage(file);
-      const imageUrl = uploadRes.url;
+      for (const item of salesQueue) {
+        // Upload image first
+        const file = dataURLtoFile(item.imageSrc, `sale_${item.id}.jpg`);
+        const uploadRes = await uploadImage(file);
+        
+        processedSales.push({
+          item: item.item,
+          quantity: item.quantity,
+          price: item.price,
+          imageUrl: uploadRes.url
+        });
+      }
 
-      const stockItem = stocks.find(s => s.name === selectedStock);
-
-      // Log sale to mock backend
-      await logSale({
+      await logSalesBulk({
         username: username,
-        item: selectedStock,
-        quantity: Number(quantity),
-        price: stockItem ? stockItem.price : 0,
-        imageUrl: imageUrl
+        sales: processedSales
       });
 
-      setMessage('Sale logged successfully!');
-      setImageSrc(null);
-      setSelectedStock('');
-      setQuantity('');
-      fetchStocks(); // Refresh stock count
-      fetchSales(); // Refresh sales history
+      setMessage(`${salesQueue.length} sales logged successfully!`);
+      setSalesQueue([]);
+      fetchStocks();
+      fetchSales();
     } catch (err) {
-      setMessage('Failed to log sale. Error: ' + (err.response?.data || err.message));
+      setMessage('Failed to log sales. Error: ' + (err.response?.data || err.message));
     } finally {
       setIsUploading(false);
     }
   };
+
 
   const handleLogout = () => {
     logout();
@@ -180,13 +233,21 @@ const UserDashboard = () => {
         </div>
 
         <div className="glass-panel">
-          <h3><Upload size={20} style={{ verticalAlign: 'middle', marginRight: '8px' }}/> Log Sale</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ margin: 0 }}><Upload size={20} style={{ verticalAlign: 'middle', marginRight: '8px' }}/> Log Sale</h3>
+            {salesQueue.length > 0 && (
+              <span className="badge badge-success" style={{ padding: '4px 8px', borderRadius: '20px' }}>
+                {salesQueue.length} items in queue
+              </span>
+            )}
+          </div>
+
           {message && (
             <div className={`badge ${message.includes('success') ? 'badge-success' : 'badge-danger'}`} style={{ marginBottom: '16px', display: 'block', textAlign: 'center', padding: '12px' }}>
               {message}
             </div>
           )}
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleAddToQueue}>
             <div className="form-group">
               <label>Select Item</label>
               <select value={selectedStock} onChange={(e) => setSelectedStock(e.target.value)} required>
@@ -215,7 +276,7 @@ const UserDashboard = () => {
                 }}
               />
               <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.9rem' }}>Estimated Total:</span>
+                <span style={{ fontSize: '0.9rem' }}>Item Total:</span>
                 <strong style={{ fontSize: '1.2rem', color: '#4ade80' }}>{amount.toFixed(2)} Rs.</strong>
               </div>
               {quantity > availableQty && (
@@ -227,14 +288,66 @@ const UserDashboard = () => {
             
             <button 
               type="submit" 
-              className="btn btn-primary" 
-              style={{ width: '100%', marginTop: '16px' }}
-              disabled={isUploading || isQuantityInvalid}
+              className="btn btn-outline" 
+              style={{ width: '100%', marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              disabled={isQuantityInvalid || !selectedStock || !imageSrc}
             >
-              {isUploading ? 'Uploading & Logging...' : 'Submit Sale'}
+              <ShoppingCart size={18} /> Add to Queue (Enter)
             </button>
           </form>
+
+          {salesQueue.length > 0 && (
+            <div style={{ marginTop: '32px', borderTop: '1px solid var(--glass-border)', paddingTop: '20px' }}>
+              <h4 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShoppingCart size={18} /> Current Queue
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHieght: '300px', overflowY: 'auto', paddingRight: '4px' }}>
+                {salesQueue.map(item => (
+                  <div key={item.id} className="glass-panel" style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <img src={item.imageSrc} alt="item" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px' }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{item.item}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        Qty: {item.quantity} × {item.price} Rs.
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: '600', color: '#4ade80' }}>{item.total.toFixed(2)}</div>
+                      <button 
+                        onClick={() => removeFromQueue(item.id)}
+                        style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer', padding: '4px' }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span>Total Amount:</span>
+                  <strong style={{ fontSize: '1.3rem', color: '#60a5fa' }}>
+                    {salesQueue.reduce((sum, item) => sum + item.total, 0).toFixed(2)} Rs.
+                  </strong>
+                </div>
+                <button 
+                  onClick={handleSubmitQueue}
+                  className="btn btn-primary"
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  disabled={isUploading}
+                >
+                  {isUploading ? 'Processing...' : (
+                    <>
+                      <CheckCircle size={18} /> Finish Sale (Shift+Enter)
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+
         </div>
       )}
 

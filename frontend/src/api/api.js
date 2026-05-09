@@ -61,6 +61,13 @@ export const logSale = async (saleData) => {
   return response.data;
 };
 
+export const logSalesBulk = async (bulkData) => {
+  // bulkData: { username, sales: [{ item, quantity, price, imageUrl }], date }
+  const response = await api.post('/sales/log_sales_bulk', bulkData);
+  return response.data;
+};
+
+
 export const getSales = async () => {
   const response = await api.get('/sales/get_sales');
   return response.data;
