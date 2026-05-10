@@ -137,7 +137,20 @@ const AdminDashboard = () => {
 
       {activeTab === 'all-stocks' && (
         <div className="glass-panel">
-          <h3>All Stocks in Inventory</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+            <h3 style={{ margin: 0 }}>All Stocks in Inventory</h3>
+            {stocks.length > 0 && (
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div className="badge badge-outline" style={{ fontSize: '1rem', padding: '8px 16px', border: '1px solid rgba(255,255,255,0.2)' }}>
+                  Total Items: {stocks.reduce((acc, stock) => acc + stock.quantity, 0)}
+                </div>
+                <div className="badge badge-primary" style={{ fontSize: '1rem', padding: '8px 16px' , backgroundColor: 'green',opacity:0.9}}>
+                  Total Value: {stocks.reduce((acc, stock) => acc + (stock.price * stock.quantity), 0).toLocaleString()} Rs.
+                </div>
+              </div>
+            )}
+          </div>
+          
           {stocks.length === 0 ? (
             <p>No stock available.</p>
           ) : (
