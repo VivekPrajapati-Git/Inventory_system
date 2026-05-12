@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
-import { Camera, Upload, LogOut, History, ChevronLeft, X, ShoppingCart, Trash2, CheckCircle } from 'lucide-react';
+import { Camera, Upload, LogOut, History, ChevronLeft, X, ShoppingCart, Trash2, CheckCircle, Search, ChevronDown } from 'lucide-react';
 import { getStocks, uploadImage, logSale, logSalesBulk, logout, getSales } from '../api/api';
 
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +18,13 @@ const UserDashboard = () => {
   const [fullSizeImage, setFullSizeImage] = useState(null);
   const [amount,setamount] = useState(0) 
   const [salesQueue, setSalesQueue] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   
+  const filteredStocks = stocks.filter(stock => 
+    stock.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
   const selectedStockItem = stocks.find(s => s.name === selectedStock);
   const availableQty = selectedStockItem ? selectedStockItem.quantity : 0;
   const isQuantityInvalid = quantity > availableQty || quantity <= 0;
@@ -61,6 +67,16 @@ const UserDashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [salesQueue]);
   
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const fetchSales = async () => {
     try {
       const data = await getSales();
@@ -248,16 +264,98 @@ const UserDashboard = () => {
             </div>
           )}
           <form onSubmit={handleAddToQueue}>
-            <div className="form-group">
+            <div className="form-group" style={{ position: 'relative' }} ref={dropdownRef}>
               <label>Select Item</label>
-              <select value={selectedStock} onChange={(e) => setSelectedStock(e.target.value)} required>
-                <option value="">-- Choose Item --</option>
-                {stocks.map(stock => (
-                  <option key={stock.id} value={stock.name} style={{ color: 'black' }}>
-                    {stock.name} (Avail: {stock.quantity}) - {stock.price} Rs.
-                  </option>
-                ))}
-              </select>
+              <div 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                style={{ 
+                  width: '100%', 
+                  padding: '12px 16px', 
+                  borderRadius: '8px', 
+                  background: 'rgba(0, 0, 0, 0.2)', 
+                  border: '1px solid var(--glass-border)',
+                  color: selectedStock ? 'var(--text-primary)' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  transition: 'all 0.3s ease',
+                  borderColor: isDropdownOpen ? 'var(--primary-color)' : 'var(--glass-border)',
+                  boxShadow: isDropdownOpen ? '0 0 0 3px var(--primary-glow)' : 'none'
+                }}
+              >
+                <span>{selectedStock || '-- Choose Item --'}</span>
+                <ChevronDown size={18} style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }} />
+              </div>
+
+              {isDropdownOpen && (
+                <div style={{ 
+                  position: 'absolute', 
+                  top: 'calc(100% + 8px)', 
+                  left: 0, 
+                  right: 0, 
+                  background: 'var(--glass-bg)', 
+                  backdropFilter: 'blur(20px)', 
+                  border: '1px solid var(--glass-border)', 
+                  borderRadius: '12px', 
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)', 
+                  zIndex: 100,
+                  overflow: 'hidden',
+                  animation: 'fade-in 0.2s ease'
+                }}>
+                  <div style={{ padding: '12px', borderBottom: '1px solid var(--glass-border)' }}>
+                    <div style={{ position: 'relative' }}>
+                      <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                      <input 
+                        autoFocus
+                        type="text" 
+                        placeholder="Search items..." 
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{ 
+                          padding: '8px 8px 8px 34px', 
+                          fontSize: '0.9rem',
+                          background: 'rgba(255,255,255,0.05)'
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ maxHeight: '250px', overflowY: 'auto', padding: '4px' }}>
+                    {filteredStocks.length > 0 ? (
+                      filteredStocks.map(stock => (
+                        <div 
+                          key={stock.id} 
+                          onClick={() => {
+                            setSelectedStock(stock.name);
+                            setIsDropdownOpen(false);
+                            setSearchTerm('');
+                          }}
+                          style={{ 
+                            padding: '10px 12px', 
+                            borderRadius: '6px', 
+                            cursor: 'pointer',
+                            transition: 'background 0.2s ease',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: selectedStock === stock.name ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: '500', color: selectedStock === stock.name ? 'var(--primary-color)' : 'var(--text-primary)' }}>{stock.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Avail: {stock.quantity}</div>
+                          </div>
+                          <div style={{ fontWeight: '600', fontSize: '0.85rem' }}>{stock.price} Rs.</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                        No items found
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="form-group">

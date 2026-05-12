@@ -350,7 +350,7 @@ const AdminDashboard = () => {
                             <span className="badge badge-success">{(sale.price * sale.quantity).toFixed(2)} Rs.</span>
                           </div>
                           <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                            Price: ${sale.price} | Qty: {sale.quantity}
+                            Price: {sale.price} Rs. | Qty: {sale.quantity}
                           </p>
                         </div>
                       </div>
